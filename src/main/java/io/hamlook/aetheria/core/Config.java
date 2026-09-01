@@ -150,6 +150,7 @@ public class Config {
             case "resetGhostTracker": ATHRConfig.resetGhostTracker(); break;
             case "resetKillCombo": ATHRConfig.resetKillCombo(); break;
             case "resetDianaTracker": ATHRConfig.resetDianaTracker(); break;
+            case "resetPlayerButtonsColors": ATHRConfig.resetPlayerButtonsColors(); break;
             case "chatFiltersGUI": ATHRConfig.openChatFilterUI(); break;
             case "openPrivacyNotice": ATHRConfig.openPrivacyNotice(); break;
             case "reloadCapes": CapeManager.reload(); break;
