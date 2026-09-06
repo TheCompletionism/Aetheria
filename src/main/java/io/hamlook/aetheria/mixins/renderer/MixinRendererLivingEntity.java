@@ -1,9 +1,6 @@
 package io.hamlook.aetheria.mixins.renderer;
 
-import io.hamlook.aetheria.core.ATHRConfig;
-import io.hamlook.aetheria.events.RenderEntityModelEvent;
-import io.hamlook.aetheria.features.qol.DamageNameplates;
-import io.hamlook.aetheria.utils.compat.MinecraftCompat;
+import io.hamlook.aetheria.mixins.hooks.RendererLivingEntityHook;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -32,14 +29,13 @@ public abstract class MixinRendererLivingEntity<T extends EntityLivingBase> exte
             at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;getDisplayName()Lnet/minecraft/util/IChatComponent;")
     )
     public IChatComponent ATHR$renderName_getDisplayName(EntityLivingBase entity) {
-        return DamageNameplates.replaceName(entity);
+        return RendererLivingEntityHook.getDisplayName(entity);
     }
 
     @Inject(method = "canRenderName(Lnet/minecraft/entity/EntityLivingBase;)Z", at = @At("HEAD"), cancellable = true)
     private void ATHR$showOwnNametag(T entity, CallbackInfoReturnable<Boolean> cir) {
-        if (ATHRConfig.feature == null) return;
-        if (ATHRConfig.feature.misc.showOwnNametag && entity == MinecraftCompat.getLocalPlayer())
-            cir.setReturnValue(true);
+        Boolean result = RendererLivingEntityHook.shouldShowOwnNametag(entity);
+        if (result != null) cir.setReturnValue(result);
     }
 
     @Inject(
@@ -52,13 +48,6 @@ public abstract class MixinRendererLivingEntity<T extends EntityLivingBase> exte
     )
     private void ATHR$fireRenderEntityModelEvent(T entity, double x, double y, double z,
                                                  float entityYaw, float partialTicks, CallbackInfo ci) {
-        float limbSwing = entity.limbSwing - entity.limbSwingAmount * (1.0F - partialTicks);
-        float limbSwingAmount = entity.prevLimbSwingAmount + (entity.limbSwingAmount - entity.prevLimbSwingAmount) * partialTicks;
-        float ageInTicks = entity.ticksExisted + partialTicks;
-        float headYaw = entity.prevRotationYawHead + (entity.rotationYawHead - entity.prevRotationYawHead) * partialTicks;
-        float headPitch = entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks;
-        new RenderEntityModelEvent(
-                entity, limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, 0.0625F, mainModel
-        ).post();
+        RendererLivingEntityHook.fireRenderEntityModelEvent(entity, partialTicks, mainModel);
     }
 }

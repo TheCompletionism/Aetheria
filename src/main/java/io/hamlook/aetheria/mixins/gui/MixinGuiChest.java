@@ -1,10 +1,6 @@
 package io.hamlook.aetheria.mixins.gui;
 
-import io.hamlook.aetheria.core.ATHRConfig;
-import io.hamlook.aetheria.core.moulconfig.editors.ChromaColour;
-import io.hamlook.aetheria.features.qol.BetterContainers;
-import io.hamlook.aetheria.features.storage.StorageManager;
-import io.hamlook.aetheria.utils.compat.MinecraftCompat;
+import io.hamlook.aetheria.mixins.hooks.GuiChestHook;
 import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
@@ -15,53 +11,33 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiChest.class)
 public class MixinGuiChest {
 
-    @Redirect(
-            method = "drawGuiContainerBackgroundLayer",
-            at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/texture/TextureManager;bindTexture(Lnet/minecraft/util/ResourceLocation;)V",
-                    ordinal = 0)
-    )
+    @Redirect(method = "drawGuiContainerBackgroundLayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/TextureManager;bindTexture(Lnet/minecraft/util/ResourceLocation;)V", ordinal = 0))
     private void ATHR$redirectBindTexture(TextureManager tm, ResourceLocation location) {
-        if (!BetterContainers.getInstance().tryBindTexture(tm, location)) {
+        if (!GuiChestHook.redirectBindTexture(tm, location)) {
             tm.bindTexture(location);
         }
     }
 
     @ModifyConstant(method = "drawGuiContainerForegroundLayer", constant = @Constant(intValue = 4210752))
     private int ATHR$modifyContainerTitleColor(int original) {
-        if (BetterContainers.isEnabled() && BetterContainers.getInstance().isLoaded()
-                && ATHRConfig.feature.qol.betterContainers.style <= 1) {
-            return 0;
-        }
-        return original;
+        return GuiChestHook.modifyContainerTitleColor(original);
     }
 
     @Inject(method = "drawGuiContainerForegroundLayer", at = @At("RETURN"))
     private void ATHR$drawWatermark(int mouseX, int mouseY, CallbackInfo ci) {
-        if (!BetterContainers.isEnabled() || !BetterContainers.getInstance().isLoaded()
-                || ATHRConfig.feature == null) return;
-        String label = "ASM";
-        int textW = MinecraftCompat.getFontRenderer().getStringWidth(label);
-        int x = ((GuiChest)(Object)this).xSize - textW - 10;
-        int y = 6;
-        int baseColor = ChromaColour.specialToChromaRGB(
-                ATHRConfig.feature.qol.betterContainers.watermarkColor);
-        int color = ChromaColour.applyChromaShift(baseColor, x, y,
-                ATHRConfig.feature.qol.betterContainers.watermarkChromaMode,
-                ATHRConfig.feature.qol.betterContainers.watermarkChromaSize);
-        MinecraftCompat.getFontRenderer().drawStringWithShadow(label, x, y, color);
+        GuiChestHook.drawWatermark((GuiChest) (Object) this);
     }
 
     @Inject(method = "drawGuiContainerBackgroundLayer", at = @At("HEAD"), cancellable = true)
     public void ATHR$cancelDrawBackground(float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
-        if (StorageManager.isOverlayActive() && StorageManager.isStorageChest()) {
+        if (GuiChestHook.shouldCancelDraw()) {
             ci.cancel();
         }
     }
 
     @Inject(method = "drawGuiContainerForegroundLayer", at = @At("HEAD"), cancellable = true)
     public void ATHR$cancelDrawForeground(int mouseX, int mouseY, CallbackInfo ci) {
-        if (StorageManager.isOverlayActive() && StorageManager.isStorageChest()) {
+        if (GuiChestHook.shouldCancelDraw()) {
             ci.cancel();
         }
     }

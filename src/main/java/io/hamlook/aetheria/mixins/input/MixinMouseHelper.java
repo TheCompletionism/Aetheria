@@ -1,12 +1,6 @@
 package io.hamlook.aetheria.mixins.input;
 
-import io.hamlook.aetheria.core.ATHRConfig;
-import io.hamlook.aetheria.features.farming.mouse.LockMouse;
-import io.hamlook.aetheria.features.farming.sensitivityreducer.SensitivityReducer;
-import io.hamlook.aetheria.features.qol.CursorResetHandler;
-import io.hamlook.aetheria.features.storage.StorageManager;
-import io.hamlook.aetheria.utils.compat.MinecraftCompat;
-import io.hamlook.aetheria.utils.compat.MouseCompat;
+import io.hamlook.aetheria.mixins.hooks.MouseHelperHook;
 import net.minecraft.util.MouseHelper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,34 +16,25 @@ public class MixinMouseHelper {
 
     @Inject(method = "ungrabMouseCursor", at = @At("HEAD"), cancellable = true)
     private void ATHR$ungrabMouseCursor(CallbackInfo ci) {
-        if (StorageManager.isOverlayActive()) {
+        if (MouseHelperHook.onUngrabMouseCursor()) {
             ci.cancel();
-            MouseCompat.setGrabbed(false);
-            MouseCompat.setCursorPosition(CursorResetHandler.cachedX, CursorResetHandler.cachedY);
-            return;
-        }
-        if (ATHRConfig.feature.qol.preventCursorReset) {
-            ci.cancel();
-            MouseCompat.setGrabbed(false);
-            MouseCompat.setCursorPosition(CursorResetHandler.cachedX, CursorResetHandler.cachedY);
         }
     }
 
     @Inject(method = "mouseXYChange", at = @At("RETURN"))
     private void ATHR$lockMouse(CallbackInfo ci) {
-        if (LockMouse.isLocked() && MinecraftCompat.getCurrentScreen() == null) {
-            deltaX = 0;
-            deltaY = 0;
-        }
+        int[] delta = {deltaX, deltaY};
+        MouseHelperHook.onLockMouse(delta);
+        deltaX = delta[0];
+        deltaY = delta[1];
     }
 
     @Inject(method = "mouseXYChange", at = @At("RETURN"))
     private void ATHR$reduceSensitivity(CallbackInfo ci) {
-        if (MinecraftCompat.getCurrentScreen() != null) return;
-        if (LockMouse.isLocked()) return;
-        if (!SensitivityReducer.isActive()) return;
-        float scale = SensitivityReducer.getSensitivityScale();
-        deltaX = Math.round(deltaX * scale);
-        deltaY = Math.round(deltaY * scale);
+        int[] delta = {deltaX, deltaY};
+        if (MouseHelperHook.onReduceSensitivity(delta)) {
+            deltaX = delta[0];
+            deltaY = delta[1];
+        }
     }
 }
